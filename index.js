@@ -9,8 +9,6 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 app.use(cors());
 app.use(express.json());
 
-// DB_USER = job_hunter
-// DB_PASSWORD = heP2espW408M6nGU
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@mern-estate.7azuc.mongodb.net/?retryWrites=true&w=majority&appName=Mern-estate`;
@@ -37,7 +35,12 @@ async function run() {
         const jobApplicationCollection = client.db('jobPortal').collection('job_applications')
 
         app.get('/jobs', async (req, res) => {
-            const cursor = jobsCollection.find();
+            const email = req.query.email;
+            let query = {};
+            if(email){
+                query= {hr_email: email}
+            }
+            const cursor = jobsCollection.find(query);
             const result = await cursor.toArray();
             res.send(result);
         })
@@ -80,6 +83,31 @@ async function run() {
         app.post('/job-applications', async(req, res) => {
             const application = req.body;
             const result = await jobApplicationCollection.insertOne(application)
+            
+
+            // Not It is proper ways
+
+            const id = application.job_id;
+            const query= {_id: new ObjectId(id)}
+            const job = await jobsCollection.findOne(query);
+            
+            let newCount = 0;
+            if(job.applicationCount){
+                newCount = job.applicationCount + 1;
+            }
+            else{
+                newCount = 1;
+            }
+
+            // now update the job info
+            const filter = { _id: new ObjectId(id)}
+            const updateDoc = {
+                $set: {
+                    applicationCount : newCount
+                }
+            }
+
+            const updateResult = await jobsCollection.updateOne(filter, updateDoc)
             res.send(result);
 
         })
